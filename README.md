@@ -75,7 +75,7 @@ The default standalone location is `$XDG_DATA_HOME/nixcards/knowledge/cards` (or
 
 ```sh
 nixcards --store /path/to/brain/knowledge/cards catalog init
-nixcards --store /path/to/brain/knowledge/cards catalog select cloud.certificates.databricks
+nixcards --store /path/to/brain/knowledge/cards catalog select cloud.bearingpoint.interview
 nixcards --store /path/to/brain/knowledge/cards catalog status
 ```
 
