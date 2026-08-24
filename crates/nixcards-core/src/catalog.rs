@@ -9,6 +9,7 @@ pub struct Card {
     pub canonical_id: String,
     pub question: String,
     pub answer: String,
+    pub source_path: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -72,33 +73,99 @@ struct Metadata {
     sources: Option<Vec<String>>,
 }
 
+struct SetSource {
+    directory: String,
+    set: CardSet,
+}
+
 impl Catalog {
     pub fn from_sources<'a>(
         sources: impl IntoIterator<Item = (&'a str, &'a str)>,
     ) -> Result<Self, CatalogError> {
-        let mut sets = Vec::new();
-        let mut set_ids = HashSet::new();
-        let mut canonical_ids = HashSet::new();
-
+        let mut files = Vec::new();
+        let mut paths = HashSet::new();
         for (path, source) in sources {
-            let set = parse_set(path, source)?;
+            if !paths.insert(path) {
+                return Err(CatalogError::new(path, "duplicate catalogue source path"));
+            }
+            files.push((path, source));
+        }
+        files.sort_by_key(|(path, _)| *path);
+
+        let mut set_ids = HashSet::new();
+        let mut set_sources = Vec::new();
+        for (path, source) in &files {
+            if !path.ends_with("/set.md") {
+                continue;
+            }
+            let set = parse_set_manifest(path, source)?;
             if !set_ids.insert(set.id.clone()) {
                 return Err(CatalogError::new(
                     path,
                     format!("duplicate set ID {}", set.id),
                 ));
             }
-            for card in &set.cards {
-                if !canonical_ids.insert(card.canonical_id.clone()) {
+            set_sources.push(SetSource {
+                directory: path.trim_end_matches("/set.md").to_owned(),
+                set,
+            });
+        }
+
+        for left in &set_sources {
+            for right in &set_sources {
+                if left.directory != right.directory
+                    && right.directory.starts_with(&format!("{}/", left.directory))
+                {
                     return Err(CatalogError::new(
-                        path,
-                        format!("duplicate canonical card ID {}", card.canonical_id),
+                        &right.set.source_path,
+                        format!("card sets must not be nested inside {}", left.set.id),
                     ));
                 }
             }
-            sets.push(set);
         }
 
+        let mut canonical_ids = HashSet::new();
+        for (path, source) in files {
+            if path.ends_with("/set.md") {
+                continue;
+            }
+            let owners: Vec<_> = set_sources
+                .iter()
+                .enumerate()
+                .filter(|(_, candidate)| path.starts_with(&format!("{}/", candidate.directory)))
+                .map(|(index, _)| index)
+                .collect();
+            let [owner_index] = owners.as_slice() else {
+                return Err(CatalogError::new(
+                    path,
+                    "card file is not owned by exactly one set",
+                ));
+            };
+            let owner = &mut set_sources[*owner_index];
+            let card = parse_card(path, source, &owner.directory, &owner.set.id)?;
+            if !canonical_ids.insert(card.canonical_id.clone()) {
+                return Err(CatalogError::new(
+                    path,
+                    format!("duplicate canonical card ID {}", card.canonical_id),
+                ));
+            }
+            owner.set.cards.push(card);
+        }
+
+        let mut sets = Vec::new();
+        for mut source in set_sources {
+            if source.set.cards.is_empty() {
+                return Err(CatalogError::new(
+                    &source.set.source_path,
+                    "card set contains no card files",
+                ));
+            }
+            source
+                .set
+                .cards
+                .sort_by(|left, right| left.id.cmp(&right.id));
+            sets.push(source.set);
+        }
         sets.sort_by(|left, right| left.id.cmp(&right.id));
         Ok(Self { sets })
     }
@@ -156,19 +223,13 @@ impl Catalog {
     }
 }
 
-fn parse_set(path: &str, source: &str) -> Result<CardSet, CatalogError> {
-    let normalized = source.replace("\r\n", "\n");
-    let body = normalized
-        .strip_prefix("---\n")
-        .ok_or_else(|| CatalogError::new(path, "missing opening metadata delimiter"))?;
-    let (metadata_source, cards_source) = body
-        .split_once("\n---\n")
-        .ok_or_else(|| CatalogError::new(path, "missing closing metadata delimiter"))?;
+fn parse_set_manifest(path: &str, source: &str) -> Result<CardSet, CatalogError> {
+    let (metadata_source, overview) = split_frontmatter(path, source)?;
     let metadata = parse_metadata(path, metadata_source)?;
 
     let id = required(path, "id", metadata.id)?;
-    validate_dotted_id(path, &id)?;
-    validate_path(path, &id)?;
+    validate_dotted_id(path, &id, "set ID", 2, 5)?;
+    validate_set_path(path, &id)?;
 
     let title = required(path, "title", metadata.title)?;
     let language = required(path, "language", metadata.language)?;
@@ -191,8 +252,10 @@ fn parse_set(path: &str, source: &str) -> Result<CardSet, CatalogError> {
             "sources must contain at least one public HTTPS URL",
         ));
     }
+    if contains_raw_html(overview) {
+        return Err(CatalogError::new(path, "set overview contains raw HTML"));
+    }
 
-    let cards = parse_cards(path, &id, cards_source)?;
     Ok(CardSet {
         id,
         title,
@@ -202,8 +265,68 @@ fn parse_set(path: &str, source: &str) -> Result<CardSet, CatalogError> {
         tags,
         sources,
         source_path: path.to_owned(),
-        cards,
+        cards: Vec::new(),
     })
+}
+
+fn split_frontmatter<'a>(path: &str, source: &'a str) -> Result<(&'a str, &'a str), CatalogError> {
+    let body = source
+        .strip_prefix("---\n")
+        .ok_or_else(|| CatalogError::new(path, "missing opening metadata delimiter"))?;
+    body.split_once("\n---\n").ok_or_else(|| {
+        CatalogError::new(
+            path,
+            "missing closing metadata delimiter or non-Unix line endings",
+        )
+    })
+}
+
+fn parse_card(
+    path: &str,
+    source: &str,
+    set_directory: &str,
+    set_id: &str,
+) -> Result<Card, CatalogError> {
+    let id = card_id_from_path(path, set_directory)?;
+    let normalized = source.replace("\r\n", "\n");
+    let (heading, answer) = normalized
+        .split_once('\n')
+        .ok_or_else(|| CatalogError::new(path, "card must contain a question and answer"))?;
+    let question = heading
+        .strip_prefix("# ")
+        .map(str::trim)
+        .filter(|question| !question.is_empty())
+        .ok_or_else(|| CatalogError::new(path, "card must start with one level-one question"))?;
+    let answer = answer.trim();
+    if answer.is_empty() {
+        return Err(CatalogError::new(
+            path,
+            format!("card {id} has an empty answer"),
+        ));
+    }
+    if contains_raw_html(answer) {
+        return Err(CatalogError::new(
+            path,
+            format!("card {id} contains raw HTML"),
+        ));
+    }
+    Ok(Card {
+        canonical_id: format!("{set_id}#{id}"),
+        id,
+        question: question.to_owned(),
+        answer: answer.to_owned(),
+        source_path: path.to_owned(),
+    })
+}
+
+fn card_id_from_path(path: &str, set_directory: &str) -> Result<String, CatalogError> {
+    let relative = path
+        .strip_prefix(&format!("{set_directory}/"))
+        .and_then(|relative| relative.strip_suffix(".md"))
+        .ok_or_else(|| CatalogError::new(path, "card path must end in .md inside its set"))?;
+    let id = relative.replace('/', ".");
+    validate_dotted_id(path, &id, "card ID", 1, 5)?;
+    Ok(id)
 }
 
 fn parse_metadata(path: &str, source: &str) -> Result<Metadata, CatalogError> {
@@ -286,93 +409,22 @@ fn required<T>(path: &str, key: &str, value: Option<T>) -> Result<T, CatalogErro
     value.ok_or_else(|| CatalogError::new(path, format!("missing metadata field {key}")))
 }
 
-fn parse_cards(path: &str, set_id: &str, source: &str) -> Result<Vec<Card>, CatalogError> {
-    let mut cards = Vec::new();
-    let mut card_ids = HashSet::new();
-    let mut current: Option<(String, String, Vec<&str>)> = None;
-
-    for line in source.lines() {
-        if let Some(heading) = line.strip_prefix("## ") {
-            if let Some((id, question, answer_lines)) = current.take() {
-                cards.push(finish_card(path, set_id, id, question, answer_lines)?);
-            }
-            let (question, id) = parse_heading(path, heading)?;
-            if !card_ids.insert(id.clone()) {
-                return Err(CatalogError::new(path, format!("duplicate card ID {id}")));
-            }
-            current = Some((id, question, Vec::new()));
-        } else if let Some((_, _, answer_lines)) = current.as_mut() {
-            answer_lines.push(line);
-        } else if !line.trim().is_empty() {
-            return Err(CatalogError::new(
-                path,
-                "content before the first level-two card heading",
-            ));
-        }
-    }
-
-    if let Some((id, question, answer_lines)) = current {
-        cards.push(finish_card(path, set_id, id, question, answer_lines)?);
-    }
-    if cards.is_empty() {
-        return Err(CatalogError::new(path, "card set contains no cards"));
-    }
-    Ok(cards)
-}
-
-fn parse_heading(path: &str, heading: &str) -> Result<(String, String), CatalogError> {
-    let heading = heading.trim();
-    let marker = heading
-        .strip_suffix('}')
-        .and_then(|heading| heading.rsplit_once(" {#"))
-        .ok_or_else(|| CatalogError::new(path, "card heading must end with {#stable-card-id}"))?;
-    let question = marker.0.trim().to_owned();
-    let id = marker.1.trim().to_owned();
-    if question.is_empty() {
-        return Err(CatalogError::new(path, "card question must not be empty"));
-    }
-    validate_segment(path, &id, "card ID")?;
-    Ok((question, id))
-}
-
-fn finish_card(
+fn validate_dotted_id(
     path: &str,
-    set_id: &str,
-    id: String,
-    question: String,
-    answer_lines: Vec<&str>,
-) -> Result<Card, CatalogError> {
-    let answer = answer_lines.join("\n").trim().to_owned();
-    if answer.is_empty() {
-        return Err(CatalogError::new(
-            path,
-            format!("card {id} has an empty answer"),
-        ));
-    }
-    if contains_raw_html(&answer) {
-        return Err(CatalogError::new(
-            path,
-            format!("card {id} contains raw HTML"),
-        ));
-    }
-    Ok(Card {
-        canonical_id: format!("{set_id}#{id}"),
-        id,
-        question,
-        answer,
-    })
-}
-
-fn validate_dotted_id(path: &str, id: &str) -> Result<(), CatalogError> {
+    id: &str,
+    label: &str,
+    min_segments: usize,
+    max_segments: usize,
+) -> Result<(), CatalogError> {
     let segments: Vec<_> = id.split('.').collect();
-    if !(2..=5).contains(&segments.len()) {
+    if !(min_segments..=max_segments).contains(&segments.len()) {
         return Err(CatalogError::new(
             path,
-            "set ID must contain two to five dotted segments",
+            format!("{label} must contain {min_segments} to {max_segments} dotted segments"),
         ));
     }
     for segment in segments {
-        validate_segment(path, segment, "set ID segment")?;
+        validate_segment(path, segment, &format!("{label} segment"))?;
     }
     Ok(())
 }
@@ -395,7 +447,7 @@ fn validate_segment(path: &str, segment: &str, label: &str) -> Result<(), Catalo
     Ok(())
 }
 
-fn validate_path(path: &str, id: &str) -> Result<(), CatalogError> {
+fn validate_set_path(path: &str, id: &str) -> Result<(), CatalogError> {
     let expected = format!("cards/{}/set.md", id.replace('.', "/"));
     if path != expected {
         return Err(CatalogError::new(

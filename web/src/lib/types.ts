@@ -3,6 +3,7 @@ export interface Card {
   canonical_id: string;
   question: string;
   answer: string;
+  source_path: string;
 }
 
 export interface CardSet {
@@ -48,4 +49,3 @@ export interface ProgressSummary {
   review_events: number;
   latest: Record<string, ReviewRating>;
 }
-

@@ -2,15 +2,15 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-fn collect_sets(directory: &Path, files: &mut Vec<PathBuf>) {
+fn collect_markdown(directory: &Path, files: &mut Vec<PathBuf>) {
     let entries = fs::read_dir(directory)
         .unwrap_or_else(|error| panic!("cannot read {}: {error}", directory.display()));
 
     for entry in entries {
         let path = entry.expect("cannot read card directory entry").path();
         if path.is_dir() {
-            collect_sets(&path, files);
-        } else if path.file_name().is_some_and(|name| name == "set.md") {
+            collect_markdown(&path, files);
+        } else if path.extension().is_some_and(|extension| extension == "md") {
             files.push(path);
         }
     }
@@ -24,7 +24,12 @@ fn main() {
         .expect("core crate must be two levels below the workspace");
     let cards = workspace.join("cards");
     let mut files = Vec::new();
-    collect_sets(&cards, &mut files);
+    for entry in fs::read_dir(&cards).expect("cannot read cards directory") {
+        let path = entry.expect("cannot read cards directory entry").path();
+        if path.is_dir() {
+            collect_markdown(&path, &mut files);
+        }
+    }
     files.sort();
 
     assert!(

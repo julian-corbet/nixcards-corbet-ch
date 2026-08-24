@@ -6,8 +6,10 @@ These are product promises. Tests should name the behavior they prove.
 
 1. Every release contains a curated catalogue of Markdown card sets from `cards/`.
 2. A set ID is a stable dotted hierarchy with two to five lowercase ASCII segments.
-3. The set directory mirrors the ID and ends in `set.md`.
-4. Card IDs are stable inside a set; the canonical card ID is `<set-id>#<card-id>`.
+3. The set directory mirrors the ID and contains a `set.md` manifest plus one Markdown file per
+   card.
+4. A card's relative path mirrors its stable dotted ID; the canonical card ID is
+   `<set-id>#<card-id>`.
 5. A build fails on malformed metadata, duplicate IDs, empty questions or answers, path drift, raw
    HTML, or card sets without provenance.
 
@@ -40,4 +42,3 @@ These are product promises. Tests should name the behavior they prove.
 19. Exam dumps, NDA material, copied exam questions, vendor logos, and affiliation claims are
     rejected.
 20. A card set records its language, licence, tags, attribution, and public sources.
-

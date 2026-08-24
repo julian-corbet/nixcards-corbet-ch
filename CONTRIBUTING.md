@@ -6,10 +6,11 @@ Contributions to application code and original card sets are welcome.
 
 1. Choose a stable ID with two to five dotted segments. Each segment must be lowercase ASCII and
    may contain internal hyphens.
-2. Create `cards/<segment>/<segment>/.../set.md` so the path mirrors the ID.
-3. Copy the metadata and card syntax from `cards/README.md`.
-4. Run `cargo run -p nixcards -- validate` and `just check`.
-5. Open one focused pull request for the set.
+2. Create `cards/<segment>/<segment>/.../set.md` so the set path mirrors the ID.
+3. Add every card as its own Markdown file below that directory; its relative path is its ID.
+4. Copy the metadata and card syntax from `cards/README.md`.
+5. Run `cargo run -p nixcards -- validate` and `just check`.
+6. Open one focused pull request for the set.
 
 Card text must be original. Public documentation and published certification objectives may inform
 the material, but real exam questions, dumps, NDA material, vendor logos, and copied proprietary
@@ -37,4 +38,3 @@ services later. Do not contribute material you cannot license on these terms.
 - Add behavior tests before changing a contract in `BEHAVIORS.md`.
 - Do not add network access, analytics, or external assets.
 - Keep browser and terminal behavior aligned.
-

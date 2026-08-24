@@ -24,6 +24,9 @@ web/                      mobile-first Svelte PWA
 
 ## Card set format
 
+Each set is a directory whose path mirrors its dotted ID. `set.md` contains only set metadata and
+an optional overview:
+
 ```markdown
 ---
 id: cloud.example.certification.associate
@@ -34,15 +37,20 @@ attribution: Example contributors
 tags: [cloud, certification]
 sources: [https://example.com/public-objectives]
 ---
+```
 
-## What is a landing zone? {#landing-zone}
+That file lives at `cards/cloud/example/certification/associate/set.md`. Every card is a separate
+Markdown file below the same directory:
+
+```markdown
+# What is a landing zone?
 
 A governed starting point for cloud workloads.
 ```
 
-The file must live at
-`cards/cloud/example/certification/associate/set.md`. Set IDs contain two to five dotted segments.
-Card IDs are unique within their set.
+Saving it as `platform/landing-zone.md` gives it the stable card ID `platform.landing-zone` and the
+canonical ID `cloud.example.certification.associate#platform.landing-zone`. Set IDs contain two to
+five dotted segments; card IDs contain one to five.
 
 ## Development
 

@@ -1,6 +1,7 @@
 # Card catalogue
 
-Every leaf directory contains one `set.md`. The directory path mirrors the set's dotted ID.
+Every leaf directory contains one `set.md` manifest and one Markdown file per card. The set
+directory path mirrors the set's dotted ID.
 
 Required metadata:
 
@@ -16,14 +17,15 @@ sources: [https://example.com/public-source]
 ---
 ```
 
-Each level-two heading starts a card and ends with its stable local ID:
+Each card file starts with one level-one question followed by its answer:
 
 ```markdown
-## Question text {#stable-card-id}
+# Question text
 
 Answer text in Markdown.
 ```
 
-Use two to five set-ID segments. Do not encode language, author, difficulty, or version in the ID.
-Within metadata lists, separate entries with commas and do not use nested YAML structures.
-
+The card's relative path below the set is its dotted ID: `platform/landing-zone.md` becomes
+`platform.landing-zone`. Use two to five set-ID segments and one to five card-ID segments. Do not
+encode language, author, difficulty, or version in the set ID. Within metadata lists, separate
+entries with commas and do not use nested YAML structures.

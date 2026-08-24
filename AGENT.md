@@ -16,7 +16,8 @@ Personal progress stays on the user's device and can be exported and imported.
   but no domain behavior.
 - `web`: mobile-first Svelte adapter. It may own browser interaction and IndexedDB storage, but no
   domain behavior.
-- `cards`: bundled community content. Directory hierarchy mirrors each set's dotted ID.
+- `cards`: bundled community content. Directory hierarchy mirrors each set's dotted ID; `set.md`
+  owns set metadata and every card has its own Markdown file.
 
 Do not add a second parser or scheduler in TypeScript. Do not add compatibility shims during active
 development. Keep AI, accounts, sync, server APIs, and in-app authoring out until product behavior
@@ -31,4 +32,3 @@ real mobile-sized browser smoke test. GitHub Actions is the public CI authority.
 
 Code is FSL-1.1-ALv2. Card content and the catalogue are CC-BY-NC-SA-4.0. New contributions must
 retain the boundary and satisfy `CONTRIBUTING.md`.
-

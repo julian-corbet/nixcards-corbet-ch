@@ -98,6 +98,7 @@ mod tests {
                     canonical_id: format!("test.set#{id}"),
                     question: id.into(),
                     answer: id.into(),
+                    source_path: format!("cards/test/set/{id}.md"),
                 })
                 .collect(),
         }
