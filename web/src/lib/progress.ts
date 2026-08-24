@@ -34,10 +34,12 @@ export async function loadProgress(): Promise<ProgressFile> {
 }
 
 export async function saveProgress(progress: ProgressFile): Promise<void> {
+  // Svelte's deep state is a Proxy, which IndexedDB cannot structured-clone.
+  const snapshot = JSON.parse(JSON.stringify(progress)) as ProgressFile;
   const database = await openDatabase();
   await new Promise<void>((resolve, reject) => {
     const transaction = database.transaction(STORE, 'readwrite');
-    transaction.objectStore(STORE).put(progress, KEY);
+    transaction.objectStore(STORE).put(snapshot, KEY);
     transaction.oncomplete = () => resolve();
     transaction.onerror = () => reject(transaction.error ?? new Error('Could not save progress'));
   });
@@ -65,4 +67,3 @@ export async function readProgressFile(file: File): Promise<ProgressFile> {
   }
   return candidate as ProgressFile;
 }
-
