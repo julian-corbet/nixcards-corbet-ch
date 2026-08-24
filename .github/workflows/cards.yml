@@ -1,0 +1,55 @@
+name: Cards
+
+on:
+  push:
+    branches: [cards]
+  pull_request:
+    branches: [cards]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cards-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out application validator
+        uses: actions/checkout@v7
+        with:
+          ref: main
+      - name: Check out pushed cards
+        if: github.event_name == 'push'
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          path: cards
+      - name: Check out proposed cards
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: cards
+      - name: Install Rust
+        run: |
+          rustup toolchain install 1.96.0 --profile minimal
+          rustup default 1.96.0
+      - name: Validate catalogue contract
+        run: |
+          cargo run --locked -p nixcards -- validate
+          cargo run --locked -p nixcards -- check-catalog-index cards/catalog.json
+
+  deploy:
+    needs: validate
+    if: github.event_name == 'push'
+    permissions:
+      contents: read
+    uses: julian-corbet/nixcards-corbet-ch/.github/workflows/deploy.yml@main
+    with:
+      app_ref: main
+      cards_ref: ${{ github.sha }}
+    secrets: inherit
