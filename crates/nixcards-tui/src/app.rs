@@ -199,8 +199,8 @@ impl App {
         if !self.query.is_empty() {
             return self.search_results.get(self.search_index).and_then(|hit| {
                 self.catalog
-                    .card(&hit.set_id, &hit.card_id)
-                    .and_then(|card| self.catalog.set(&hit.set_id).map(|set| (set, card)))
+                    .set(&hit.set_id)
+                    .zip(self.catalog.card(&hit.set_id, &hit.card_id))
             });
         }
         self.catalog

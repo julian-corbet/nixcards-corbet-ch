@@ -44,15 +44,16 @@ fn path_must_mirror_the_dotted_id() {
 #[test]
 fn duplicate_card_ids_fail_validation() {
     let duplicate = format!("{VALID}\n## Again {{#what}}\n\nAnother answer.\n");
-    let error = Catalog::from_sources([("cards/cloud/example/set.md", &duplicate)]).unwrap_err();
+    let error =
+        Catalog::from_sources([("cards/cloud/example/set.md", duplicate.as_str())]).unwrap_err();
     assert!(error.to_string().contains("duplicate card ID"));
 }
 
 #[test]
 fn raw_html_fails_validation() {
     let unsafe_source = VALID.replace("An **answer**.", "<script>alert(1)</script>");
-    let error =
-        Catalog::from_sources([("cards/cloud/example/set.md", &unsafe_source)]).unwrap_err();
+    let error = Catalog::from_sources([("cards/cloud/example/set.md", unsafe_source.as_str())])
+        .unwrap_err();
     assert!(error.to_string().contains("raw HTML"));
 }
 
