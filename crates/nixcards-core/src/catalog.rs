@@ -101,7 +101,7 @@ impl Catalog {
             let set = parse_set_manifest(path, source)?;
             if !set_ids.insert(set.id.clone()) {
                 return Err(CatalogError::new(
-                    path,
+                    *path,
                     format!("duplicate set ID {}", set.id),
                 ));
             }
