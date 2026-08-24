@@ -319,6 +319,7 @@ h1 {
   cursor: pointer;
 }
 .browse-note { margin: 16px 0 0; color: var(--text-dim); font-size: 0.76rem; text-align: center; }
+.edit-card-link { display: block; width: fit-content; margin: 12px auto 0; color: var(--accent); font-size: 0.76rem; }
 .cram-meter { overflow: hidden; height: 5px; margin: -6px 0 22px; border-radius: 99px; background: var(--surface-strong); }
 .cram-meter span { display: block; height: 100%; background: var(--accent); transition: width 180ms ease; }
 .cram-meta { display: flex; justify-content: space-between; margin-bottom: 10px; color: var(--text-dim); font-size: 0.75rem; }

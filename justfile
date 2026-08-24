@@ -3,6 +3,12 @@ set shell := ["bash", "-euo", "pipefail", "-c"]
 default:
     @just --list
 
+cards:
+    ./scripts/checkout-cards.sh
+
+cards-sync:
+    ./scripts/checkout-cards.sh --sync
+
 fmt:
     cargo fmt --all --check
 
@@ -21,11 +27,10 @@ web-check: wasm
     cd web && npm run check
     cd web && npm run build
 
-check: fmt rust-check web-check
+check: cards fmt rust-check web-check
 
 web-dev: wasm
     cd web && npm run dev -- --host 0.0.0.0
 
 deploy: check
-    wrangler deploy
-
+    cd web && npx wrangler deploy --config ../wrangler.jsonc

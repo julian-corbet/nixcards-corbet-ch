@@ -26,6 +26,8 @@
 
   type View = 'library' | 'set' | 'card' | 'cram' | 'progress';
 
+  const repositoryUrl = 'https://github.com/julian-corbet/nixcards-corbet-ch';
+
   let catalog = $state<Catalog>({ sets: [] });
   let progress = $state<ProgressFile>(emptyProgress());
   let summary = $state<ProgressSummary>({
@@ -103,6 +105,10 @@
     const index = selectedSet.cards.findIndex((card) => card.id === selectedCard.id);
     const next = (index + delta + selectedSet.cards.length) % selectedSet.cards.length;
     openCard(selectedSet.id, selectedSet.cards[next].id);
+  }
+
+  function editCardUrl(card: Card): string {
+    return `${repositoryUrl}/edit/cards/${card.source_path.replace(/^cards\//, '')}`;
   }
 
   function updateSearch(event: Event): void {
@@ -318,6 +324,9 @@
           <button onclick={() => moveCard(1)}>Next →</button>
         </div>
         <p class="browse-note">Browsing never changes your learning progress.</p>
+        <a class="edit-card-link" href={editCardUrl(selectedCard)} target="_blank" rel="noreferrer">
+          Edit this card on GitHub ↗
+        </a>
       </section>
     {:else if view === 'cram' && selectedSet}
       <section class="screen card-screen cram-screen">
@@ -394,7 +403,7 @@
           </p>
         </div>
         <footer>
-          <a href="https://github.com/julian-corbet/nixcards-corbet-ch">Source</a>
+          <a href={repositoryUrl}>Source</a>
           <span>FSL code · CC-BY-NC-SA cards</span>
         </footer>
       </section>
@@ -414,4 +423,3 @@
     </nav>
   {/if}
 </div>
-

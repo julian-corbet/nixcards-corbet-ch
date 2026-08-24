@@ -16,12 +16,16 @@ progress export/import, and a German BearingPoint cloud interview set.
 ## Repository shape
 
 ```text
-cards/                    bundled Markdown catalogue
+cards branch              canonical Markdown catalogue and contribution target
 crates/nixcards-core/     parser, validation, search, cram, progress, WASM API
 crates/nixcards-store/    Git-native partial clone and sparse selection
 crates/nixcards-tui/      Ratatui interface, catalogue manager, local progress store
 web/                      mobile-first Svelte PWA
 ```
+
+The `cards` branch is the only editable source of card content. Builds check it out temporarily as
+the ignored `cards/` directory and compile the validated catalogue into the terminal and web apps.
+There is no generated contribution branch and no second card tree to keep in sync.
 
 ## Card set format
 
@@ -40,7 +44,7 @@ sources: [https://example.com/public-objectives]
 ---
 ```
 
-That file lives at `cards/cloud/example/certification/associate/set.md`. Every card is a separate
+On the `cards` branch that file lives at `cloud/example/certification/associate/set.md`. Every card is a separate
 Markdown file below the same directory:
 
 ```markdown
@@ -58,10 +62,16 @@ five dotted segments; card IDs contain one to five.
 Requirements: Rust 1.96+, Node.js 24+, npm 11+, and wasm-pack 0.15+.
 
 ```sh
+just cards
 just check
 just web-dev
 cargo run -p nixcards
 ```
+
+`just cards` clones the canonical data branch into the ignored local `cards/` build input. Use
+`just cards-sync` to fast-forward a clean checkout. To contribute, create a topic branch inside
+`cards/`, edit the Markdown you are learning from, push that branch, and open the pull request
+against the repository's `cards` branch.
 
 ## Selective local catalogue
 
@@ -79,8 +89,9 @@ nixcards --store /path/to/brain/knowledge/cards catalog select cloud.bearingpoin
 nixcards --store /path/to/brain/knowledge/cards catalog status
 ```
 
-The `catalog` branch is CI-published with the contents of `cards/` at its root. Its small
-`catalog.json` is always present, while unselected Markdown blobs remain remote.
+The canonical `cards` branch has the catalogue at its root. Its small `catalog.json` is always
+present, while unselected Markdown blobs remain remote. The sparse checkout is therefore also a
+normal Git contribution checkout: corrections do not need to be copied into another tree.
 
 ## Licence
 

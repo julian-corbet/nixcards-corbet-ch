@@ -4,7 +4,8 @@ These are product promises. Tests should name the behavior they prove.
 
 ## Catalogue
 
-1. Every release contains a curated catalogue of Markdown card sets from `cards/`.
+1. Every release contains the curated catalogue from the canonical `cards` branch, materialized as
+   `cards/` only while building.
 2. A set ID is a stable dotted hierarchy with two to five lowercase ASCII segments.
 3. The set directory mirrors the ID and contains a `set.md` manifest plus one Markdown file per
    card.
@@ -33,18 +34,21 @@ These are product promises. Tests should name the behavior they prove.
 16. The terminal selector renders the complete published hierarchy, selects branches or sets, and
     materializes only the selected set directories.
 17. Catalogue initialization and synchronization happen only after an explicit user action.
+18. A terminal catalogue checkout follows the canonical contribution branch; local corrections are
+    ordinary Git changes and synchronization never overwrites them.
 
 ## Interfaces
 
-18. The web interface is designed for one-handed use on a narrow phone before desktop layouts.
-19. The Ratatui interface supports browsing, search, reveal, cram review, catalogue selection,
+19. The web interface is designed for one-handed use on a narrow phone before desktop layouts.
+20. Every web card links to its exact Markdown source on the canonical contribution branch.
+21. The Ratatui interface supports browsing, search, reveal, cram review, catalogue selection,
     validation, and progress
     import/export.
-20. Reduced-motion and keyboard users retain the complete product behavior.
+22. Reduced-motion and keyboard users retain the complete product behavior.
 
 ## Content integrity
 
-21. Certification material is original and based only on public objectives or documentation.
-22. Exam dumps, NDA material, copied exam questions, vendor logos, and affiliation claims are
+23. Certification material is original and based only on public objectives or documentation.
+24. Exam dumps, NDA material, copied exam questions, vendor logos, and affiliation claims are
     rejected.
-23. A card set records its language, licence, tags, attribution, and public sources.
+25. A card set records its language, licence, tags, attribution, and public sources.

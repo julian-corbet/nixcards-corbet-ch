@@ -9,7 +9,7 @@ use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
 pub const OFFICIAL_REPOSITORY: &str = "https://github.com/julian-corbet/nixcards-corbet-ch.git";
-pub const CATALOG_BRANCH: &str = "catalog";
+pub const CATALOG_BRANCH: &str = "cards";
 pub const CATALOG_INDEX_FILE: &str = "catalog.json";
 const STORE_LOCK: &str = ".nixcards-store.lock";
 const LOCK_WAIT: Duration = Duration::from_secs(5);
@@ -148,7 +148,8 @@ impl CatalogStore {
         )?;
         if !dirty.trim().is_empty() {
             return Err(
-                "catalogue checkout has local changes; edit the source repository instead".into(),
+                "catalogue checkout has local changes; commit them on a topic branch or restore them before syncing"
+                    .into(),
             );
         }
         git(
@@ -496,7 +497,7 @@ mod tests {
         git_ok(
             Command::new("git")
                 .arg("init")
-                .arg("--initial-branch=catalog")
+                .arg("--initial-branch=cards")
                 .arg(&source),
         );
         git_ok(Command::new("git").arg("-C").arg(&source).args([
@@ -557,7 +558,7 @@ mod tests {
             Command::new("git")
                 .arg("-C")
                 .arg(&source)
-                .args(["push", "origin", "catalog"]),
+                .args(["push", "origin", "cards"]),
         );
 
         let checkout = fixture.path().join("knowledge/cards");

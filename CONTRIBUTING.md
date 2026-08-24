@@ -4,13 +4,21 @@ Contributions to application code and original card sets are welcome.
 
 ## Add a card set
 
-1. Choose a stable ID with two to five dotted segments. Each segment must be lowercase ASCII and
+1. Run `just cards`, then create a topic branch in the nested checkout with
+   `git -C cards switch -c cards/<short-name>`.
+2. Choose a stable ID with two to five dotted segments. Each segment must be lowercase ASCII and
    may contain internal hyphens.
-2. Create `cards/<segment>/<segment>/.../set.md` so the set path mirrors the ID.
-3. Add every card as its own Markdown file below that directory; its relative path is its ID.
-4. Copy the metadata and card syntax from `cards/README.md`.
-5. Run `cargo run -p nixcards -- validate` and `just check`.
-6. Open one focused pull request for the set.
+3. Create `cards/<segment>/<segment>/.../set.md` so the set path mirrors the ID.
+4. Add every card as its own Markdown file below that directory; its relative path is its ID.
+5. Copy the metadata and card syntax from `cards/README.md`.
+6. Regenerate the index with
+   `cargo run -p nixcards -- catalog-index > cards/catalog.json`, then run `just check`.
+7. Push the topic branch from `cards/` and open one focused pull request with `cards` as its base.
+
+For a correction to an existing card, use the **Edit this card** link in the web app or edit the
+file directly in a selected local catalogue checkout. That checkout follows the canonical `cards`
+branch, so the change itself can be committed and proposed without translation. `catalog sync`
+refuses to overwrite a dirty checkout.
 
 Card text must be original. Public documentation and published certification objectives may inform
 the material, but real exam questions, dumps, NDA material, vendor logos, and copied proprietary
