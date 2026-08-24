@@ -48,3 +48,11 @@ project's [contribution terms](https://github.com/julian-corbet/nixcards-corbet-
 For the complete local workflow, clone `main`, run `just cards`, create a topic branch inside the
 resulting `cards/` checkout, and run `just check` before pushing. A selected standalone catalogue at
 `knowledge/cards` is already a normal checkout of this branch and can be used directly.
+
+```sh
+git switch -c cards/<short-name>
+git add <changed-markdown-files>
+git commit -m "Correct <topic> cards"
+git push -u origin HEAD
+gh pr create --base cards
+```
