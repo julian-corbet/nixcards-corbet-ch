@@ -171,6 +171,7 @@ h1 {
   text-align: left;
   cursor: pointer;
 }
+.set-open > div { min-width: 0; }
 .set-open small, .card-row small {
   display: block;
   overflow: hidden;

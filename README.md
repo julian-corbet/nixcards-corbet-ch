@@ -6,6 +6,8 @@ nixcards keeps the behavior in one Rust core and ships a curated, community-main
 with the application. Browse any card freely, run a focused cram session, and keep your progress on
 your own device. There are no accounts, analytics, or backend services.
 
+**Use it now:** [nixcards.corbet.ch](https://nixcards.corbet.ch)
+
 ## Status
 
 The first release includes the mobile web application, terminal interface, catalogue validator,
