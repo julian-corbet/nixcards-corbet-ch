@@ -101,6 +101,8 @@ CC-BY-NC-SA-4.0. See [`LICENSING.md`](LICENSING.md).
 
 Contributions are welcome, especially focused card sets with stable IDs and authoritative sources.
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) before opening a pull request.
+Product extensions that require an explicit behavior decision are kept in
+[`ROADMAP.md`](ROADMAP.md); ordinary corrections and new card sets do not wait on that queue.
 
 nixcards is an independent project and is not affiliated with or endorsed by certification
 providers or employers named in contributed study material.
