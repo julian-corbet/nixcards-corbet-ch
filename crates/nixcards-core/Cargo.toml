@@ -1,0 +1,23 @@
+[package]
+name = "nixcards-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+build = "build.rs"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = []
+wasm = ["dep:serde-wasm-bindgen", "dep:wasm-bindgen"]
+
+[dependencies]
+pulldown-cmark.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+serde-wasm-bindgen = { workspace = true, optional = true }
+wasm-bindgen = { workspace = true, optional = true }
+

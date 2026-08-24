@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  rust:
+    name: Rust and cards
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install Rust
+        run: |
+          rustup toolchain install 1.96.0 --profile minimal --component rustfmt,clippy
+          rustup default 1.96.0
+      - name: Check formatting
+        run: cargo fmt --all --check
+      - name: Lint
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+      - name: Test
+        run: cargo test --workspace --all-features
+      - name: Validate bundled cards
+        run: cargo run --locked -p nixcards -- validate
+
+  web:
+    name: Svelte PWA
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install Rust and WASM target
+        run: |
+          rustup toolchain install 1.96.0 --profile minimal --target wasm32-unknown-unknown
+          rustup default 1.96.0
+      - name: Install wasm-pack
+        run: cargo install wasm-pack --version 0.15.0 --locked
+      - name: Build Rust WASM core
+        run: wasm-pack build crates/nixcards-core --target web --out-dir ../../web/src/lib/wasm --features wasm
+      - name: Install web dependencies
+        working-directory: web
+        run: npm ci
+      - name: Check Svelte and TypeScript
+        working-directory: web
+        run: npm run check
+      - name: Build PWA
+        working-directory: web
+        run: npm run build
+      - uses: actions/upload-artifact@v7
+        with:
+          name: nixcards-web
+          path: web/dist
+          if-no-files-found: error
+
