@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "sets": [
+    {
+      "id": "cloud.bearingpoint.interview.senior-consultant",
+      "title": "BearingPoint Cloud & GenAI Senior Consultant Interview",
+      "language": "de",
+      "tags": [
+        "cloud",
+        "genai",
+        "data",
+        "consulting",
+        "interview",
+        "bearingpoint"
+      ],
+      "path": "cloud/bearingpoint/interview/senior-consultant",
+      "card_count": 52
+    }
+  ]
+}
