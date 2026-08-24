@@ -29,3 +29,6 @@ The card's relative path below the set is its dotted ID: `platform/landing-zone.
 `platform.landing-zone`. Use two to five set-ID segments and one to five card-ID segments. Do not
 encode language, author, difficulty, or version in the set ID. Within metadata lists, separate
 entries with commas and do not use nested YAML structures.
+
+`catalog.json` is the committed, content-free index used to render the complete selection tree
+before card blobs are downloaded. Regenerate it with `nixcards catalog-index`; CI rejects drift.

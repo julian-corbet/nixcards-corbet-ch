@@ -1,14 +1,16 @@
 use crate::progress_store;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use nixcards_core::{
-    Card, CardSet, Catalog, CramSession, ProgressFile, ReviewRating, SearchHit,
+    Card, CardSet, Catalog, CatalogIndex, CramSession, ProgressFile, ReviewRating, SearchHit,
     markdown_to_plain_text,
 };
+use nixcards_store::{CatalogStore, OFFICIAL_REPOSITORY};
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Wrap};
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -27,10 +29,28 @@ pub struct App {
     cram: Option<CramSession>,
     message: String,
     quit: bool,
+    store: CatalogStore,
+    managing_catalog: bool,
+    catalog_rows: Vec<CatalogRow>,
+    catalog_cursor: usize,
+    pending_sets: BTreeSet<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct CatalogRow {
+    path: String,
+    depth: usize,
+    title: Option<String>,
+    descendants: Vec<String>,
 }
 
 impl App {
-    pub fn new(catalog: Catalog, progress: ProgressFile, progress_path: PathBuf) -> Self {
+    pub fn new(
+        catalog: Catalog,
+        progress: ProgressFile,
+        progress_path: PathBuf,
+        store: CatalogStore,
+    ) -> Self {
         Self {
             catalog,
             progress,
@@ -46,6 +66,11 @@ impl App {
             cram: None,
             message: "Browse freely. Press c to cram the selected set.".into(),
             quit: false,
+            store,
+            managing_catalog: false,
+            catalog_rows: Vec::new(),
+            catalog_cursor: 0,
+            pending_sets: BTreeSet::new(),
         }
     }
 
@@ -54,6 +79,10 @@ impl App {
     }
 
     pub fn handle_key(&mut self, key: KeyEvent) {
+        if self.managing_catalog {
+            self.handle_catalog_key(key);
+            return;
+        }
         if self.search_mode {
             self.handle_search_key(key);
             return;
@@ -71,6 +100,7 @@ impl App {
                 self.search_index = 0;
                 self.message = "Type to search the complete catalogue.".into();
             }
+            KeyCode::Char('m') if self.cram.is_none() => self.open_catalog_manager(),
             KeyCode::Esc => {
                 if self.cram.take().is_some() {
                     self.message = "Cram session closed. Browse progress was not changed.".into();
@@ -97,6 +127,87 @@ impl App {
                 self.review(ReviewRating::Known)
             }
             _ => {}
+        }
+    }
+
+    fn open_catalog_manager(&mut self) {
+        if !self.store.is_initialized()
+            && let Err(error) = self.store.initialize(OFFICIAL_REPOSITORY)
+        {
+            self.message = error;
+            return;
+        }
+        match (self.store.catalog_index(), self.store.selected_set_ids()) {
+            (Ok(index), Ok(selected)) => {
+                self.catalog_rows = catalog_rows(&index);
+                self.pending_sets = selected.into_iter().collect();
+                self.catalog_cursor = self
+                    .catalog_cursor
+                    .min(self.catalog_rows.len().saturating_sub(1));
+                self.managing_catalog = true;
+                self.message = "Choose local sets. Enter applies the sparse checkout.".into();
+            }
+            (Err(error), _) | (_, Err(error)) => self.message = error,
+        }
+    }
+
+    fn handle_catalog_key(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Esc | KeyCode::Char('m') => {
+                self.managing_catalog = false;
+                self.message = "Catalogue selection left unchanged.".into();
+            }
+            KeyCode::Up | KeyCode::Char('k') => {
+                self.catalog_cursor = shifted(self.catalog_cursor, -1, self.catalog_rows.len());
+            }
+            KeyCode::Down | KeyCode::Char('j') => {
+                self.catalog_cursor = shifted(self.catalog_cursor, 1, self.catalog_rows.len());
+            }
+            KeyCode::Char(' ') => self.toggle_catalog_row(),
+            KeyCode::Char('r') => match self.store.sync() {
+                Ok(()) => self.open_catalog_manager(),
+                Err(error) => self.message = error,
+            },
+            KeyCode::Enter => self.apply_catalog_selection(),
+            KeyCode::Char('q') => self.quit = true,
+            _ => {}
+        }
+    }
+
+    fn toggle_catalog_row(&mut self) {
+        let Some(row) = self.catalog_rows.get(self.catalog_cursor) else {
+            return;
+        };
+        let all_selected = row
+            .descendants
+            .iter()
+            .all(|id| self.pending_sets.contains(id));
+        if all_selected {
+            for id in &row.descendants {
+                self.pending_sets.remove(id);
+            }
+        } else {
+            self.pending_sets.extend(row.descendants.iter().cloned());
+        }
+    }
+
+    fn apply_catalog_selection(&mut self) {
+        let selected: Vec<_> = self.pending_sets.iter().cloned().collect();
+        if let Err(error) = self.store.select(&selected) {
+            self.message = error;
+            return;
+        }
+        match self.store.load_selected_catalog() {
+            Ok(catalog) => {
+                self.catalog = catalog;
+                self.set_index = 0;
+                self.card_index = 0;
+                self.query.clear();
+                self.search_results.clear();
+                self.managing_catalog = false;
+                self.message = format!("Applied {} local card set(s).", selected.len());
+            }
+            Err(error) => self.message = error,
         }
     }
 
@@ -210,6 +321,10 @@ impl App {
     }
 
     pub fn draw(&self, frame: &mut Frame<'_>) {
+        if self.managing_catalog {
+            self.draw_catalog_manager(frame);
+            return;
+        }
         let vertical = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
@@ -307,7 +422,7 @@ impl App {
         } else if self.cram.is_some() {
             "Space reveal · a/1 again · k/2 known · Esc end · q quit"
         } else {
-            "Tab pane · ↑↓/jk move · Space reveal · / search · c cram · q quit"
+            "Tab pane · ↑↓/jk move · Space reveal · / search · c cram · m catalogue · q quit"
         };
         frame.render_widget(
             Paragraph::new(vec![
@@ -318,6 +433,112 @@ impl App {
             vertical[2],
         );
     }
+
+    fn draw_catalog_manager(&self, frame: &mut Frame<'_>) {
+        let vertical = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(3),
+                Constraint::Min(8),
+                Constraint::Length(3),
+            ])
+            .split(frame.area());
+        frame.render_widget(
+            Paragraph::new(Line::from(vec![
+                Span::styled(
+                    "nixcards",
+                    Style::default()
+                        .fg(Color::Green)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::raw("  local catalogue selection"),
+            ]))
+            .block(Block::default().borders(Borders::ALL).title(" Catalogue ")),
+            vertical[0],
+        );
+
+        let items: Vec<_> = self
+            .catalog_rows
+            .iter()
+            .map(|row| {
+                let selected = row
+                    .descendants
+                    .iter()
+                    .filter(|id| self.pending_sets.contains(*id))
+                    .count();
+                let marker = if selected == 0 {
+                    "[ ]"
+                } else if selected == row.descendants.len() {
+                    "[x]"
+                } else {
+                    "[-]"
+                };
+                let label = row
+                    .title
+                    .as_deref()
+                    .unwrap_or_else(|| row.path.rsplit('.').next().unwrap_or(&row.path));
+                ListItem::new(format!(
+                    "{}{} {}",
+                    "  ".repeat(row.depth.saturating_sub(1)),
+                    marker,
+                    label
+                ))
+            })
+            .collect();
+        let mut state = ListState::default().with_selected(Some(self.catalog_cursor));
+        frame.render_stateful_widget(
+            List::new(items)
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .title(" Available sets "),
+                )
+                .highlight_symbol("› ")
+                .highlight_style(
+                    Style::default()
+                        .fg(Color::Green)
+                        .add_modifier(Modifier::BOLD),
+                ),
+            vertical[1],
+            &mut state,
+        );
+        frame.render_widget(
+            Paragraph::new(vec![
+                Line::from(self.message.as_str()),
+                Line::styled(
+                    "↑↓/jk move · Space toggle branch · Enter apply · r sync · Esc cancel",
+                    Style::default().fg(Color::DarkGray),
+                ),
+            ])
+            .block(Block::default().borders(Borders::ALL)),
+            vertical[2],
+        );
+    }
+}
+
+fn catalog_rows(index: &CatalogIndex) -> Vec<CatalogRow> {
+    let mut rows: BTreeMap<String, CatalogRow> = BTreeMap::new();
+    for set in &index.sets {
+        let segments: Vec<_> = set.id.split('.').collect();
+        for depth in 1..=segments.len() {
+            let path = segments[..depth].join(".");
+            let row = rows.entry(path.clone()).or_insert_with(|| CatalogRow {
+                path,
+                depth,
+                title: None,
+                descendants: Vec::new(),
+            });
+            row.descendants.push(set.id.clone());
+            if depth == segments.len() {
+                row.title = Some(set.title.clone());
+            }
+        }
+    }
+    for row in rows.values_mut() {
+        row.descendants.sort();
+        row.descendants.dedup();
+    }
+    rows.into_values().collect()
 }
 
 fn shifted(current: usize, delta: isize, length: usize) -> usize {
@@ -332,4 +553,45 @@ fn now() -> u64 {
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
         .as_secs()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use nixcards_core::{CATALOG_INDEX_SCHEMA_VERSION, CatalogIndexSet};
+
+    #[test]
+    fn hierarchy_rows_group_sets_by_dotted_prefix() {
+        let index = CatalogIndex {
+            schema_version: CATALOG_INDEX_SCHEMA_VERSION,
+            sets: vec![
+                CatalogIndexSet {
+                    id: "cloud.bearingpoint.interview".into(),
+                    title: "Interview".into(),
+                    language: "en".into(),
+                    tags: Vec::new(),
+                    path: "cloud/bearingpoint/interview".into(),
+                    card_count: 1,
+                },
+                CatalogIndexSet {
+                    id: "cloud.certificates.databricks.introduction".into(),
+                    title: "Databricks".into(),
+                    language: "en".into(),
+                    tags: Vec::new(),
+                    path: "cloud/certificates/databricks/introduction".into(),
+                    card_count: 1,
+                },
+            ],
+        };
+        let rows = catalog_rows(&index);
+        let certificates = rows
+            .iter()
+            .find(|row| row.path == "cloud.certificates")
+            .expect("certificate branch");
+        assert_eq!(
+            certificates.descendants,
+            ["cloud.certificates.databricks.introduction"]
+        );
+        assert_eq!(rows[0].path, "cloud");
+    }
 }

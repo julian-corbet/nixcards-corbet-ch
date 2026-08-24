@@ -18,7 +18,8 @@ progress export/import, and a German BearingPoint cloud interview set.
 ```text
 cards/                    bundled Markdown catalogue
 crates/nixcards-core/     parser, validation, search, cram, progress, WASM API
-crates/nixcards-tui/      Ratatui interface and local progress store
+crates/nixcards-store/    Git-native partial clone and sparse selection
+crates/nixcards-tui/      Ratatui interface, catalogue manager, local progress store
 web/                      mobile-first Svelte PWA
 ```
 
@@ -61,6 +62,25 @@ just check
 just web-dev
 cargo run -p nixcards
 ```
+
+## Selective local catalogue
+
+The terminal application can keep a large catalogue local without downloading every card. Press
+`m` in the TUI, select any hierarchy branches or individual sets, and press Enter to apply. The
+checkout uses Git's `blob:none` partial-clone filter and Git sparse checkout; the sparse paths are
+the only local selection record.
+
+The default standalone location is `$XDG_DATA_HOME/nixcards/knowledge/cards` (or
+`~/.local/share/nixcards/knowledge/cards`). Override it with `NIXCARDS_STORE` or `--store`:
+
+```sh
+nixcards --store /path/to/brain/knowledge/cards catalog init
+nixcards --store /path/to/brain/knowledge/cards catalog select cloud.certificates.databricks
+nixcards --store /path/to/brain/knowledge/cards catalog status
+```
+
+The `catalog` branch is CI-published with the contents of `cards/` at its root. Its small
+`catalog.json` is always present, while unselected Markdown blobs remain remote.
 
 ## Licence
 

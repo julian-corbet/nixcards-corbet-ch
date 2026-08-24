@@ -1,5 +1,5 @@
 [package]
-name = "nixcards"
+name = "nixcards-store"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -7,8 +7,8 @@ repository.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-crossterm.workspace = true
 nixcards-core = { path = "../nixcards-core" }
-nixcards-store = { path = "../nixcards-store" }
-ratatui.workspace = true
 serde_json.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

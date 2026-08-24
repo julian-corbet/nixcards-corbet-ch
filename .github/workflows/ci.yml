@@ -28,7 +28,9 @@ jobs:
       - name: Test
         run: cargo test --workspace --all-features
       - name: Validate bundled cards
-        run: cargo run --locked -p nixcards -- validate
+        run: |
+          cargo run --locked -p nixcards -- validate
+          cargo run --locked -p nixcards -- check-catalog-index cards/catalog.json
 
   web:
     name: Svelte PWA
@@ -62,4 +64,3 @@ jobs:
           name: nixcards-web
           path: web/dist
           if-no-files-found: error
-

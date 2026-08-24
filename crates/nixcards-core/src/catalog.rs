@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::fmt;
 
+pub const CATALOG_INDEX_SCHEMA_VERSION: u32 = 1;
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Card {
     pub id: String,
@@ -28,6 +30,25 @@ pub struct CardSet {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Catalog {
     pub sets: Vec<CardSet>,
+}
+
+/// Small, content-free catalogue published at the sparse repository root.
+/// It lets a client render the complete hierarchy before any card blobs are
+/// selected.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct CatalogIndex {
+    pub schema_version: u32,
+    pub sets: Vec<CatalogIndexSet>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct CatalogIndexSet {
+    pub id: String,
+    pub title: String,
+    pub language: String,
+    pub tags: Vec<String>,
+    pub path: String,
+    pub card_count: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -220,6 +241,24 @@ impl Catalog {
 
     pub fn card_count(&self) -> usize {
         self.sets.iter().map(|set| set.cards.len()).sum()
+    }
+
+    pub fn index(&self) -> CatalogIndex {
+        CatalogIndex {
+            schema_version: CATALOG_INDEX_SCHEMA_VERSION,
+            sets: self
+                .sets
+                .iter()
+                .map(|set| CatalogIndexSet {
+                    id: set.id.clone(),
+                    title: set.title.clone(),
+                    language: set.language.clone(),
+                    tags: set.tags.clone(),
+                    path: set.id.replace('.', "/"),
+                    card_count: set.cards.len(),
+                })
+                .collect(),
+        }
     }
 }
 

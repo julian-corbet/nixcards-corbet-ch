@@ -6,7 +6,10 @@ mod session;
 #[cfg(feature = "wasm")]
 mod wasm_api;
 
-pub use catalog::{Card, CardSet, Catalog, CatalogError, SearchHit};
+pub use catalog::{
+    CATALOG_INDEX_SCHEMA_VERSION, Card, CardSet, Catalog, CatalogError, CatalogIndex,
+    CatalogIndexSet, SearchHit,
+};
 pub use markdown::{markdown_to_plain_text, render_markdown_safe};
 pub use progress::{ProgressFile, ProgressSummary, ReviewEvent, ReviewRating};
 pub use session::CramSession;
