@@ -6,10 +6,17 @@ use std::fs;
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::time::{Duration, Instant};
 
 pub const OFFICIAL_REPOSITORY: &str = "https://github.com/julian-corbet/nixcards-corbet-ch.git";
 pub const CATALOG_BRANCH: &str = "catalog";
 pub const CATALOG_INDEX_FILE: &str = "catalog.json";
+const STORE_LOCK: &str = ".nixcards-store.lock";
+const LOCK_WAIT: Duration = Duration::from_secs(5);
+
+struct StoreLock {
+    _file: fs::File,
+}
 
 #[derive(Debug, Clone)]
 pub struct CatalogStore {
@@ -46,6 +53,7 @@ impl CatalogStore {
             .ok_or_else(|| format!("{} has no parent directory", self.root.display()))?;
         fs::create_dir_all(parent)
             .map_err(|error| format!("cannot create {}: {error}", parent.display()))?;
+        let _lock = acquire_store_lock(&self.root)?;
         run(
             Command::new("git")
                 .arg("clone")
@@ -122,6 +130,7 @@ impl CatalogStore {
             paths.insert(path.clone());
         }
         let input = paths.into_iter().collect::<Vec<_>>().join("\n");
+        let _lock = acquire_store_lock(&self.root)?;
         git_input(
             &self.root,
             ["sparse-checkout", "set", "--cone", "--stdin"],
@@ -132,6 +141,7 @@ impl CatalogStore {
 
     pub fn sync(&self) -> Result<(), String> {
         self.validate_checkout()?;
+        let _lock = acquire_store_lock(&self.root)?;
         let dirty = git_output(
             &self.root,
             ["status", "--porcelain", "--untracked-files=no"],
@@ -276,6 +286,66 @@ fn collect_markdown(
 
 fn normalize_path(path: &str) -> String {
     path.trim().replace('\\', "/").trim_matches('/').to_owned()
+}
+
+fn acquire_store_lock(store: &Path) -> Result<StoreLock, String> {
+    let parent = store
+        .parent()
+        .ok_or_else(|| format!("{} has no parent directory", store.display()))?;
+    fs::create_dir_all(parent)
+        .map_err(|error| format!("cannot create {}: {error}", parent.display()))?;
+    acquire_lock(&parent.join(STORE_LOCK))
+        .ok_or_else(|| "another nixcards store operation is still active".into())
+}
+
+#[cfg(unix)]
+fn acquire_lock(path: &Path) -> Option<StoreLock> {
+    let file = fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(path)
+        .ok()?;
+    let started = Instant::now();
+    loop {
+        if rustix::fs::flock(&file, rustix::fs::FlockOperation::NonBlockingLockExclusive).is_ok() {
+            return Some(StoreLock { _file: file });
+        }
+        if started.elapsed() >= LOCK_WAIT {
+            return None;
+        }
+        std::thread::sleep(Duration::from_millis(50));
+    }
+}
+
+#[cfg(windows)]
+fn acquire_lock(path: &Path) -> Option<StoreLock> {
+    use std::os::windows::fs::OpenOptionsExt as _;
+    const ERROR_SHARING_VIOLATION: i32 = 32;
+    const ERROR_LOCK_VIOLATION: i32 = 33;
+
+    let started = Instant::now();
+    loop {
+        match fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .share_mode(0)
+            .open(path)
+        {
+            Ok(file) => return Some(StoreLock { _file: file }),
+            Err(error)
+                if matches!(
+                    error.raw_os_error(),
+                    Some(ERROR_SHARING_VIOLATION | ERROR_LOCK_VIOLATION)
+                ) => {}
+            Err(_) => return None,
+        }
+        if started.elapsed() >= LOCK_WAIT {
+            return None;
+        }
+        std::thread::sleep(Duration::from_millis(50));
+    }
 }
 
 fn git<const N: usize>(root: &Path, args: [&str; N]) -> Result<(), String> {

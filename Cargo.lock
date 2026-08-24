@@ -705,6 +705,7 @@ name = "nixcards-store"
 version = "0.1.0"
 dependencies = [
  "nixcards-core",
+ "rustix",
  "serde_json",
  "tempfile",
 ]
