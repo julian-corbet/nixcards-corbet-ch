@@ -27,18 +27,19 @@ or endorsement.
 
 ## Contribution terms
 
-By submitting a contribution, you certify that you have the right to submit it and agree to the
-following inbound terms:
+The outbound license for a contribution depends on what it changes:
 
 - Code contributions are licensed under FSL-1.1-ALv2 with Apache-2.0 as the Future Licence.
 - Card and catalogue contributions are licensed under CC-BY-NC-SA-4.0.
-- You grant the project maintainer a perpetual, worldwide, non-exclusive, royalty-free right to
-  use, reproduce, modify, distribute, sublicense, and relicense the contribution, including under
-  commercial terms. You retain ownership of your contribution.
-- Your attribution may be recorded in the set metadata and Git history.
 
-This grant preserves the public licence while allowing the project to offer separately licensed
-services later. Do not contribute material you cannot license on these terms.
+Before submitting, read and agree to version 1.0 of the organization-wide
+[Individual Contributor License Agreement][icla]. You retain ownership of your contribution, and
+your attribution may be recorded in the set metadata and Git history. Do not contribute material
+unless you have the right to grant the agreement's terms.
+
+> I have read and agree to version 1.0 of the Individual Contributor License Agreement at https://github.com/corbet-labs/.github/blob/cla-v1.0/CLA.md.
+
+[icla]: https://github.com/corbet-labs/.github/blob/cla-v1.0/CLA.md
 
 ## Code quality
 
