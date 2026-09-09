@@ -7,8 +7,17 @@ fn collect_markdown(directory: &Path, files: &mut Vec<PathBuf>) {
         .unwrap_or_else(|error| panic!("cannot read {}: {error}", directory.display()));
 
     for entry in entries {
-        let path = entry.expect("cannot read card directory entry").path();
-        if path.is_dir() {
+        let entry = entry.expect("cannot read card directory entry");
+        let path = entry.path();
+        let kind = entry
+            .file_type()
+            .expect("cannot inspect card directory entry");
+        assert!(
+            !kind.is_symlink(),
+            "card sources must not be symbolic links: {}",
+            path.display()
+        );
+        if kind.is_dir() {
             collect_markdown(&path, files);
         } else if path.extension().is_some_and(|extension| extension == "md") {
             files.push(path);
@@ -25,8 +34,17 @@ fn main() {
     let cards = workspace.join("cards");
     let mut files = Vec::new();
     for entry in fs::read_dir(&cards).expect("cannot read cards directory") {
-        let path = entry.expect("cannot read cards directory entry").path();
-        if path.is_dir() {
+        let entry = entry.expect("cannot read cards directory entry");
+        let path = entry.path();
+        let kind = entry
+            .file_type()
+            .expect("cannot inspect card directory entry");
+        assert!(
+            !kind.is_symlink(),
+            "card sources must not be symbolic links: {}",
+            path.display()
+        );
+        if kind.is_dir() {
             collect_markdown(&path, &mut files);
         }
     }

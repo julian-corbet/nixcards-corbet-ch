@@ -1,0 +1,28 @@
+schema = 1
+project = "nixcards"
+
+# cards is an exact separately fetched source dependency; this lane still needs
+# forge access. Select cards before rust/catalog/web. Existing WASM tools and
+# target must be provisioned; the workflow does not install them.
+
+[checks.catalog-source]
+kind = "commands"
+commands = [["python3", "-m", "unittest", "discover", "-s", "tests", "-p", "test_catalog_build_guard.py", "-v"], ["cargo", "fmt", "--all", "--check"]]
+
+[checks.cards]
+kind = "commands"
+commands = [["git", "init", "-q", "cards"], ["git", "-C", "cards", "fetch", "--depth=1", "https://github.com/julian-corbet/nixcards-corbet-ch.git", "a3c4d7837fe5abf852e3d861efa0fdf3802ce751"], ["git", "-C", "cards", "checkout", "--detach", "a3c4d7837fe5abf852e3d861efa0fdf3802ce751"]]
+
+[checks.rust]
+kind = "cargo"
+actions = ["fmt", "clippy", "test"]
+workspace = true
+all_features = true
+
+[checks.catalog]
+kind = "commands"
+commands = [["cargo", "run", "--locked", "-p", "nixcards", "--", "validate"], ["cargo", "run", "--locked", "-p", "nixcards", "--", "check-catalog-index", "cards/catalog.json"]]
+
+[checks.web]
+kind = "commands"
+commands = [["wasm-pack", "build", "crates/nixcards-core", "--mode", "no-install", "--target", "web", "--out-dir", "../../web/src/lib/wasm", "--features", "wasm"], ["npm", "--prefix", "web", "ci", "--ignore-scripts", "--no-audit", "--no-fund"], ["npm", "--prefix", "web", "run", "check"], ["npm", "--prefix", "web", "run", "build"]]
