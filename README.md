@@ -73,6 +73,16 @@ cargo run -p nixcards
 `cards/`, edit the Markdown you are learning from, push that branch, and open the pull request
 against the repository's `cards` branch.
 
+The manual Crow workflow calls the shared `ccid` runner. Its default checks keep
+the source guards, pinned cards input, Rust checks, and catalogue validation.
+`.ci/archives.toml` records the exact cards revision. A dispatcher can stage that
+already-local Git revision as `CARDS_SOURCE_ARCHIVE` plus `CARDS_SOURCE_SHA256`;
+the runner verifies both its checksum and embedded commit before extracting it.
+Invalid or incomplete staged input fails without falling back to the network.
+With neither variable supplied, CI fetches the same pinned revision from GitHub.
+Select `cards` before `rust`, `catalog`, or `web` when running a focused selection.
+The `web` check still requires the existing WebAssembly target and wasm-pack.
+
 ## Selective local catalogue
 
 The terminal application can keep a large catalogue local without downloading every card. Press

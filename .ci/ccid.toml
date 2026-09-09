@@ -1,17 +1,18 @@
 schema = 1
 project = "nixcards"
 
-# cards is an exact separately fetched source dependency; this lane still needs
-# forge access. Select cards before rust/catalog/web. Existing WASM tools and
-# target must be provisioned; the workflow does not install them.
+# Cards is an exact pinned source dependency. Crow can supply its verified
+# archive; otherwise the cards selector fetches that same revision from GitHub.
+# Select cards before rust/catalog/web. Existing WASM tools and target must be
+# provisioned; the workflow does not install them.
 
 [checks.catalog-source]
 kind = "commands"
-commands = [["python3", "-m", "unittest", "discover", "-s", "tests", "-p", "test_catalog_build_guard.py", "-v"], ["cargo", "fmt", "--all", "--check"]]
+commands = [["python3", "-m", "unittest", "discover", "-s", "tests", "-p", "test_catalog_build_guard.py", "-v"], ["python3", "-m", "unittest", "discover", "-s", "tests", "-p", "test_ci_cards_source.py", "-v"], ["cargo", "fmt", "--all", "--check"]]
 
 [checks.cards]
 kind = "commands"
-commands = [["git", "init", "-q", "cards"], ["git", "-C", "cards", "fetch", "--depth=1", "https://github.com/julian-corbet/nixcards-corbet-ch.git", "a3c4d7837fe5abf852e3d861efa0fdf3802ce751"], ["git", "-C", "cards", "checkout", "--detach", "a3c4d7837fe5abf852e3d861efa0fdf3802ce751"]]
+commands = [["bash", ".ci/prepare-cards.sh"]]
 
 [checks.rust]
 kind = "cargo"

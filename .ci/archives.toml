@@ -1,0 +1,6 @@
+schema = 1
+
+[archives.cards]
+revision = "a3c4d7837fe5abf852e3d861efa0fdf3802ce751"
+archive_variable = "CARDS_SOURCE_ARCHIVE"
+digest_variable = "CARDS_SOURCE_SHA256"

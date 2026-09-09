@@ -26,7 +26,8 @@ explicitly changes.
 ## Verification
 
 Run `just check` for Rust, WebAssembly, Svelte, and card validation. Browser changes also require a
-real mobile-sized browser smoke test. GitHub Actions is the public CI authority.
+real mobile-sized browser smoke test. Crow's shared runner is the default CI path;
+preserve the platform and release coverage declared by the hosted workflows.
 
 ## Licensing
 
